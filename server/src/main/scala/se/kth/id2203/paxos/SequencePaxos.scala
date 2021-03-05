@@ -1,9 +1,6 @@
 package se.kth.id2203.paxos;
 
-
-import Role._
-import State._
-import se.kth.id2203.BLE.{BLE_Leader, BLE_Start, GossipLeaderElection}
+import se.kth.id2203.BLE.{BLE_Leader, BLE_Start, BallotLeaderElection, GossipLeaderElection}
 import se.kth.id2203.kvstore.Operation
 import se.kth.id2203.networking.{NetAddress, NetMessage}
 import se.sics.kompics.network.Network
@@ -11,7 +8,6 @@ import se.sics.kompics.KompicsEvent
 import se.sics.kompics.sl._
 
 import scala.collection.mutable;
-
 
 case class Prepare(nL: Long, ld: Int, na: Long) extends KompicsEvent;
 case class Promise(nL: Long, na: Long, suffix: List[Operation], ld: Int) extends KompicsEvent;
@@ -30,7 +26,8 @@ object Role extends Enumeration {
   val LEADER, FOLLOWER = Value;
 }
 
-
+import Role._
+import State._
 
 //class SequencePaxos(init: Init[SequencePaxos]) extends ComponentDefinition {
 class SequencePaxos extends ComponentDefinition {
@@ -62,6 +59,7 @@ class SequencePaxos extends ComponentDefinition {
   var na = 0l;
   var va = List.empty[Operation];
   var ld = 0;
+
   // leader state
   var propCmds = List.empty[Operation];
   val las = mutable.Map.empty[NetAddress, Int];
@@ -73,11 +71,12 @@ class SequencePaxos extends ComponentDefinition {
   ble uponEvent {
     case BLE_Leader(l, n) => {
         /* INSERT YOUR CODE HERE */
-         println(s"new Leader: $l");
+         println(s"[SC] new Leader: $l");
         if(n > nL){
             leader = Some(l);
             nL = n;
             if((self == l) && (nL > nProm)){
+                println(s"[SC] I am leader");
                 state = (LEADER, PREPARE);
                 propCmds = List.empty[Operation];
                 las.clear;
@@ -85,7 +84,7 @@ class SequencePaxos extends ComponentDefinition {
                 acks.clear;
                 lc = 0;
                 for(p <- others){
-                    trigger(NetMessage(self,p, Prepare(nL, ld, na))->pl);
+                    trigger(NetMessage(self, p, Prepare(nL, ld, na))->pl);
                 }
                 acks += (l ->(na, suffix(va, ld)));
                 lds += (self->ld);
@@ -99,11 +98,12 @@ class SequencePaxos extends ComponentDefinition {
 
   pl uponEvent {
     case NetMessage(header, Prepare(np, ldp, n)) => {
-      var p = header.src;
+      val p = header.src;
       /* INSERT YOUR CODE HERE */
        if(nProm < np){
           nProm = np;
           state = (FOLLOWER, PREPARE);
+         println("[SC] I promise to prepare");
           var sfx = List.empty[Operation];
           if(na >= n){
               sfx = suffix(va, ld);
@@ -115,7 +115,7 @@ class SequencePaxos extends ComponentDefinition {
 
 
     case NetMessage(header, Promise(n, na, sfxa, lda)) => {
-      var a=header.src;
+      val a = header.src;
       if ((n == nL) && (state == (LEADER, PREPARE))) {
         /* INSERT YOUR CODE HERE */
          acks += (a ->(na, sfxa));
@@ -152,7 +152,7 @@ class SequencePaxos extends ComponentDefinition {
       } else if ((n == nL) && (state == (LEADER, ACCEPT))) {
         /* INSERT YOUR CODE HERE */
        lds += (a->lda);
-        var sfx = suffix(va, lds(a));
+        val sfx = suffix(va, lds(a));
         trigger(NetMessage(self, a, AcceptSync(nL,sfx, lds(a)))->pl);
         if(lc != 0 ){
             trigger(NetMessage(self, a, Decide(ld,nL))->pl);
@@ -162,7 +162,7 @@ class SequencePaxos extends ComponentDefinition {
 
 
     case NetMessage(header, AcceptSync(nL, sfx, ldp)) => {
-      var p = header.src;
+      val p = header.src;
       if ((nProm == nL) && (state == (FOLLOWER, PREPARE))) {
          /* INSERT YOUR CODE HERE */
           na = nL;
@@ -175,10 +175,11 @@ class SequencePaxos extends ComponentDefinition {
 
 
     case NetMessage(header, Accept(nL, c)) => {
-      var p = header.src;
+      val p = header.src;
       if ((nProm == nL) && (state == (FOLLOWER, ACCEPT))) {
          /* INSERT YOUR CODE HERE */
           va = va ::: List(c);
+        println("[SC] accepting");
          trigger(NetMessage(self, p, Accepted(nL, va.size))->pl);
       }
     }
@@ -188,6 +189,7 @@ class SequencePaxos extends ComponentDefinition {
        /* INSERT YOUR CODE HERE */
         if(nProm == nL){
             while(ld<l){
+                println("[SC] sequence paxos decide: " + va(ld));
                 trigger(SC_Decide(va(ld))->sc);
                 ld += 1;
             }
@@ -196,7 +198,7 @@ class SequencePaxos extends ComponentDefinition {
 
 
     case NetMessage(header, Accepted(n, m)) => {
-      var a = header.src;
+      val a = header.src;
       if ((n == nL) && (state == (LEADER, ACCEPT))) {
          /* INSERT YOUR CODE HERE */
          las +=(a-> m);
@@ -228,8 +230,10 @@ class SequencePaxos extends ComponentDefinition {
 
   sc uponEvent {
     case SC_Propose(c) => {
+
       if (state == (LEADER, PREPARE)) {
          /* INSERT YOUR CODE HERE */;
+        println("[SC] sequence paxos propose: " + c );
           propCmds = propCmds ::: List(c);
       }
       else if (state == (LEADER, ACCEPT)) {
@@ -244,13 +248,22 @@ class SequencePaxos extends ComponentDefinition {
              }
          }
       }
+      else{
+        if(leader.isDefined){
+          println("[SC] I am not the leader, forward to leader");
+          trigger(NetMessage(self, leader.get, c)->pl);
+        }else{
+          println("[SC] No leader yet");
+        }
+      }
     }
 
-    case InitializeTopology(topology) => {
+    case SC_InitializeTopology(topology) => {
       pi = topology;
       others = pi - self;
       majority = (pi.size / 2) + 1;
-      //trigger(new BLE_Start(pi) -> ble);
+      println("[SC] Sequence paxos initialize topology");
+      trigger(BLE_Start(pi) -> ble);
   }
 
   }

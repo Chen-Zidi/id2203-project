@@ -39,7 +39,7 @@ class KVService extends ComponentDefinition {
 
   //******* Ports ******
   val net = requires[Network];
-  //val route = requires(Routing);
+  val route = requires(Routing);
 
   //added
   val sc = requires[SequenceConsensus];
@@ -68,15 +68,15 @@ class KVService extends ComponentDefinition {
 
   net uponEvent {
     case NetMessage(header, operation: Operation) => {
-      log.info("Got operation: {}", operation);
-      pendingList. += (operation.id -> header.src);
+      log.info(" Got operation: {}", operation);
+      pendingList += (operation.id -> header.src);
       trigger(SC_Propose(operation) -> sc);
     }
   }
 
   sc uponEvent{
     case SC_Decide(operation: Operation) => {
-        log.info("Decide operation: {}", operation);
+        log.info("[KVStore - SC] Decide operation: {}", operation);
       var opSrc = self;
       if(pendingList.contains(operation.id)){
         opSrc = pendingList.get(operation.id).get;
@@ -85,30 +85,30 @@ class KVService extends ComponentDefinition {
          case Get(key,id)=>{
            if(data.contains(key)){
              val getValue = data.get(key);
-             log.info("Get operation: $key - $getValue");
+             println("[KVStore] GET operation: " + key + " - " + getValue);
              trigger(NetMessage(self, opSrc, GetResponse(id, OpCode.Ok, getValue.get))->net);
            }else{
-             log.info("Get operation error: $key - value not found");
+             println("[KVStore] GET operation error: key " + key + " not found");
              trigger(NetMessage(self, opSrc, GetResponse(id, OpCode.NotFound, "null"))->net);
            }
          }
          case Put(key, value, id)=>{
-           log.info("Put operation: $key - $value");
+           println("[KVStore] PUT operation: " + key + " - " + value);
            data += (key->value);
            trigger(NetMessage(self, opSrc, PutResponse(id, OpCode.Ok, value))->net);
          }
          case Cas(key, refValue, value, id)=>{
            if(data.contains(key)){
-             if(data.get(key)!= refValue){//not match the ref Value
-               log.info("Cas operation fail: $key - value not match");
+             if(data.get(key).get!= refValue){//not match the ref Value
+               println("[KVStore] CAS operation error: " + key + " - " + refValue + " not match");
                trigger(NetMessage(self, opSrc, CasResponse(id, OpCode.NotFound, "not match"))->net);
              }else{//success
-               log.info("Cas operation: $key - $value");
+               println("[KVStore] CAS operation: " + key + " - " + value);
                data += (key -> value);
                trigger(NetMessage(self, opSrc, CasResponse(id, OpCode.Ok, value))->net);
              }
            }else{//key not exist
-             log.info("Cas operation error: $key - value not found");
+             println("[KVStore] CAS operation error: " + key + " not found");
              trigger(NetMessage(self, opSrc, CasResponse(id, OpCode.NotFound, "null"))->net);
            }
          }

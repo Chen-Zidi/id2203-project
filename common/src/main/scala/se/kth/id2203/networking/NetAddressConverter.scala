@@ -41,6 +41,7 @@ object NetAddressConverter extends Converter[NetAddress] with StrictLogging {
           return NetAddress(ip, port);
         }
         case s: String => {
+
           val ipport = s.split(":");
           val ip = InetAddress.getByName(ipport(0));
           val port = Integer.parseInt(ipport(1));

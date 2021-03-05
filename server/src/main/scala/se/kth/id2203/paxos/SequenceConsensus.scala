@@ -13,13 +13,13 @@ import se.sics.kompics.KompicsEvent
 
 class SequenceConsensus extends Port {
   request[SC_Propose];
-  request[InitializeTopology];
+  request[SC_InitializeTopology];
   indication[SC_Decide];
 }
 
 case class SC_Propose(value: Operation) extends KompicsEvent;
 case class SC_Decide(value: Operation) extends KompicsEvent;
-case class InitializeTopology(topology: Set[NetAddress]) extends KompicsEvent;
+case class SC_InitializeTopology(topology: Set[NetAddress]) extends KompicsEvent;
 
 
 

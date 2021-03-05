@@ -68,11 +68,11 @@ trait OperationResponse extends KompicsEvent {
 case class OpResponse(id: UUID, status: OpCode.OpCode) extends OperationResponse with Serializable;
 
 //added
-@SerialVersionUID(155271583133228661L)
+@SerialVersionUID(155271583133228662L)
 case class GetResponse(id: UUID, status: OpCode.OpCode, value: String) extends OperationResponse with Serializable;
 
-@SerialVersionUID(155271583133228661L)
+@SerialVersionUID(155271583133228663L)
 case class PutResponse(id: UUID, status: OpCode.OpCode, value: String) extends OperationResponse with Serializable;
 
-@SerialVersionUID(155271583133228661L)
+@SerialVersionUID(155271583133228664L)
 case class CasResponse(id: UUID, status: OpCode.OpCode, value: String) extends OperationResponse with Serializable;

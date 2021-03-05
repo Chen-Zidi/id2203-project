@@ -14,14 +14,19 @@ class BallotLeaderElection extends Port{
   request[BLE_Start];
 }
 
+@SerialVersionUID(155271583133228670L)
 case class BLE_Start(pi: Set[NetAddress]) extends KompicsEvent;
 
+@SerialVersionUID(155271583133228671L)
 case class BLE_Leader(address: NetAddress, l: Long) extends KompicsEvent;
 
+@SerialVersionUID(155271583133228672L)
 case class CheckTimeout(timeout: ScheduleTimeout) extends Timeout(timeout);
 
+@SerialVersionUID(155271583133228673L)
 case class HeartbeatReq(round: Long, highestBallot: Long) extends KompicsEvent;
 
+@SerialVersionUID(155271583133228674L)
 case class HeartbeatResp(round: Long, ballot: Long) extends KompicsEvent;
 
 
@@ -45,12 +50,12 @@ class GossipLeaderElection extends ComponentDefinition {
 
   //what is delta here
   //val delta = cfg.getValue[Long]("ble.simulation.delay");
-  val delta = 50;
+  val delta = cfg.getValue[Long]("id2203.project.keepAlivePeriod");
   var majority =  0;
 
   //what is period here?
   //private var period = cfg.getValue[Long]("ble.simulation.delay");
-  private var period = 1500l;
+  private var period = delta;
   private val ballots = mutable.Map.empty[NetAddress, Long];
 
   private var round = 0l;
@@ -114,6 +119,7 @@ class GossipLeaderElection extends ComponentDefinition {
       if(Some(top) != leader ){
         highestBallot = topBallot;
         makeLeader((topBallot, topProcess));
+        println("[BLE] Ballot leader election end");
         trigger(BLE_Leader(topProcess, topBallot)->ble);
       }
     }
@@ -125,6 +131,8 @@ class GossipLeaderElection extends ComponentDefinition {
       topology = pi;
       majority = (topology.size / 2) + 1;
       startTimer(period);
+      println("[BLE] Ballot leader election initialize topology");
+      println("[BLE] Ballot leader election start");
     }
   }
 
