@@ -23,11 +23,14 @@
  */
 package se.kth.id2203.overlay;
 
-import se.kth.id2203.bootstrapping._;
-import se.kth.id2203.networking._;
-import se.sics.kompics.sl._;
-import se.sics.kompics.network.Network;
-import se.sics.kompics.timer.Timer;
+import se.kth.id2203.BLE.{BLE_Start, BallotLeaderElection}
+import se.kth.id2203.bootstrapping._
+import se.kth.id2203.networking._
+import se.kth.id2203.paxos.{InitializeTopology, SequenceConsensus}
+import se.sics.kompics.sl._
+import se.sics.kompics.network.Network
+import se.sics.kompics.timer.Timer
+
 import util.Random;
 
 /**
@@ -43,36 +46,52 @@ import util.Random;
 class VSOverlayManager extends ComponentDefinition {
 
   //******* Ports ******
-  val route = provides(Routing);
+//  val route = provides(Routing);
   val boot = requires(Bootstrapping);
   val net = requires[Network];
   val timer = requires[Timer];
+
+
+  //connect to the sequence consensus componement
+  val sc = requires[SequenceConsensus];
+  val ble = requires[BallotLeaderElection];
+
   //******* Fields ******
   val self = cfg.getValue[NetAddress]("id2203.project.address");
   private var lut: Option[LookupTable] = None;
   //******* Handlers ******
   boot uponEvent {
-    case GetInitialAssignments(nodes) => {
+    case GetInitialAssignments(nodes) => {//generate lookup table
       log.info("Generating LookupTable...");
       val lut = LookupTable.generate(nodes);
       logger.debug("Generated assignments:\n$lut");
       trigger(new InitialAssignments(lut) -> boot);
     }
+
     case Booted(assignment: LookupTable) => {
       log.info("Got NodeAssignment, overlay ready.");
       lut = Some(assignment);
+
+      //inform the sequence paxos component and ballot election component
+      trigger(new BLE_Start(lut.get.getNodes())->ble);
+      trigger(new InitializeTopology(lut.get.getNodes())->sc);
+
     }
   }
 
   net uponEvent {
-    case NetMessage(header, RouteMsg(key, msg)) => {
-      val nodes = lut.get.lookup(key);
-      assert(!nodes.isEmpty);
-      val i = Random.nextInt(nodes.size);
-      val target = nodes.drop(i).head;
-      log.info(s"Forwarding message for key $key to $target");
-      trigger(NetMessage(header.src, target, msg) -> net);
-    }
+
+//I have only one paritition
+//not need routing
+//    case NetMessage(header, RouteMsg(key, msg)) => {
+//      val nodes = lut.get.lookup(key);
+//      assert(!nodes.isEmpty);
+//      val i = Random.nextInt(nodes.size);
+//      val target = nodes.drop(i).head;
+//      log.info(s"Forwarding message for key $key to $target");
+//      trigger(NetMessage(header.src, target, msg) -> net);
+//    }
+
     case NetMessage(header, msg: Connect) => {
       lut match {
         case Some(l) => {
@@ -85,14 +104,14 @@ class VSOverlayManager extends ComponentDefinition {
     }
   }
 
-  route uponEvent {
-    case RouteMsg(key, msg) => {
-      val nodes = lut.get.lookup(key);
-      assert(!nodes.isEmpty);
-      val i = Random.nextInt(nodes.size);
-      val target = nodes.drop(i).head;
-      log.info(s"Routing message for key $key to $target");
-      trigger(NetMessage(self, target, msg) -> net);
-    }
-  }
+//  route uponEvent {
+//    case RouteMsg(key, msg) => {
+//      val nodes = lut.get.lookup(key);
+//      assert(!nodes.isEmpty);
+//      val i = Random.nextInt(nodes.size);
+//      val target = nodes.drop(i).head;
+//      log.info(s"Routing message for key $key to $target");
+//      trigger(NetMessage(self, target, msg) -> net);
+//    }
+//  }
 }

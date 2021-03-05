@@ -21,29 +21,101 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package se.kth.id2203.kvstore;
+package se.kth.id2203.kvstore
 
-import se.kth.id2203.networking._;
-import se.kth.id2203.overlay.Routing;
-import se.sics.kompics.sl._;
-import se.sics.kompics.network.Network;
+;
+
+import se.kth.id2203.networking._
+import se.kth.id2203.overlay.Routing
+import se.kth.id2203.paxos.{SC_Decide, SC_Propose, SequenceConsensus}
+import se.sics.kompics.sl._
+import se.sics.kompics.network.Network
+
+import java.util.UUID
+import scala.collection.mutable;
+
 
 class KVService extends ComponentDefinition {
 
   //******* Ports ******
   val net = requires[Network];
-  val route = requires(Routing);
+  //val route = requires(Routing);
+
+  //added
+  val sc = requires[SequenceConsensus];
+
+  //stores all key-value pairs
+  //initially has three values
+  var data = mutable.HashMap("A" -> "Apple", "B" -> "banana", "C" -> "Cherry");
+
+  var pendingList = Map.empty[UUID, NetAddress];
+
   //******* Fields ******
   val self = cfg.getValue[NetAddress]("id2203.project.address");
+
+
   //******* Handlers ******
+  //  net uponEvent {
+  //    case NetMessage(header, op @ Get(key, _)) => {
+  //      log.info("Got operation {}! Now implement me please :)", op);
+  //      trigger(NetMessage(self, header.src, op.response(OpCode.NotImplemented)) -> net);
+  //    }
+  //    case NetMessage(header, op @ Put(key, value, _)) => {
+  //      log.info("Got operation {}! Now implement me please :)", op);
+  //      trigger(NetMessage(self, header.src, op.response(OpCode.NotImplemented)) -> net);
+  //    }
+  //  }
+
   net uponEvent {
-    case NetMessage(header, op @ Get(key, _)) => {
-      log.info("Got operation {}! Now implement me please :)", op);
-      trigger(NetMessage(self, header.src, op.response(OpCode.NotImplemented)) -> net);
-    }
-    case NetMessage(header, op @ Put(key, value, _)) => {
-      log.info("Got operation {}! Now implement me please :)", op);
-      trigger(NetMessage(self, header.src, op.response(OpCode.NotImplemented)) -> net);
+    case NetMessage(header, operation: Operation) => {
+      log.info("Got operation: {}", operation);
+      pendingList. += (operation.id -> header.src);
+      trigger(SC_Propose(operation) -> sc);
     }
   }
+
+  sc uponEvent{
+    case SC_Decide(operation: Operation) => {
+        log.info("Decide operation: {}", operation);
+      var opSrc = self;
+      if(pendingList.contains(operation.id)){
+        opSrc = pendingList.get(operation.id).get;
+      }
+       operation match{
+         case Get(key,id)=>{
+           if(data.contains(key)){
+             val getValue = data.get(key);
+             log.info("Get operation: $key - $getValue");
+             trigger(NetMessage(self, opSrc, GetResponse(id, OpCode.Ok, getValue.get))->net);
+           }else{
+             log.info("Get operation error: $key - value not found");
+             trigger(NetMessage(self, opSrc, GetResponse(id, OpCode.NotFound, "null"))->net);
+           }
+         }
+         case Put(key, value, id)=>{
+           log.info("Put operation: $key - $value");
+           data += (key->value);
+           trigger(NetMessage(self, opSrc, PutResponse(id, OpCode.Ok, value))->net);
+         }
+         case Cas(key, refValue, value, id)=>{
+           if(data.contains(key)){
+             if(data.get(key)!= refValue){//not match the ref Value
+               log.info("Cas operation fail: $key - value not match");
+               trigger(NetMessage(self, opSrc, CasResponse(id, OpCode.NotFound, "not match"))->net);
+             }else{//success
+               log.info("Cas operation: $key - $value");
+               data += (key -> value);
+               trigger(NetMessage(self, opSrc, CasResponse(id, OpCode.Ok, value))->net);
+             }
+           }else{//key not exist
+             log.info("Cas operation error: $key - value not found");
+             trigger(NetMessage(self, opSrc, CasResponse(id, OpCode.NotFound, "null"))->net);
+           }
+         }
+       }
+  }
+
+  }
+
+
 }

@@ -63,29 +63,48 @@ class ClientConsole(val service: ClientService) extends CommandConsole with Pars
         .map(x => CasObject(x._1, x._2, x._3))
   }
 
+  //edited
   val putCommand = parsed(putParser, usage = "put <key> <value>", descr = "Executes put for <key> <value>.") {
     case PutObject(key, value) =>
       // Create a PUT operation through ClientService
-      out.println("Implement me");
+      //out.println("Implement me");
+      val fr = service.put(key, value);
+      out.println("Operation 'put' sent! Awaiting response...");
+      try {
+        val r = Await.result(fr, 5.seconds);
+        out.println("Operation 'put' complete! Response was: " + r.status);
+      } catch {
+        case e: Throwable => logger.error("Error during op.", e);
+      }
   }
 
   val getCommand = parsed(getParser, usage = "get <key>", descr = "Executes get for <key>.") { key =>
     val fr = service.get(key);
-    out.println("Operation sent! Awaiting response...");
+    out.println("Operation 'get' sent! Awaiting response...");
     try {
       val r = Await.result(fr, 5.seconds);
-      out.println("Operation complete! Response was: " + r.status);
+      out.println("Operation 'get' complete! Response was: " + r.status);
     } catch {
       case e: Throwable => logger.error("Error during op.", e);
     }
 
   }
+
+  //edited
   val casCommand = parsed(casParser,
                           usage = "cas <key> <ref-value> <new-value>",
                           descr = "Executes cas for <key> <ref-value> <new-value>.") {
     case CasObject(key, refValue, newValue) =>
       // Create a CAS operation through ClientService
-      out.println("Implement me");
+      //out.println("Implement me");
+      val fr = service.cas(key, refValue, newValue);
+      out.println("Operation 'cas' sent! Awaiting response...");
+      try {
+        val r = Await.result(fr, 5.seconds);
+        out.println("Operation 'cas' complete! Response was: " + r.status);
+      } catch {
+        case e: Throwable => logger.error("Error during op.", e);
+      }
   }
 
 }
