@@ -21,7 +21,9 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package se.kth.id2203.kvstore;
+package se.kth.id2203.kvstore
+
+;
 
 import java.util.UUID;
 import se.kth.id2203.networking._;
@@ -35,6 +37,9 @@ import collection.mutable;
 import concurrent.{Future, Promise};
 
 case class ConnectTimeout(spt: ScheduleTimeout) extends Timeout(spt);
+
+//edited
+//OpResponse=>OperationResponse
 case class OpWithPromise(op: Operation, promise: Promise[OperationResponse] = Promise()) extends KompicsEvent;
 
 class ClientService extends ComponentDefinition {
@@ -47,8 +52,8 @@ class ClientService extends ComponentDefinition {
   val server = cfg.getValue[NetAddress]("id2203.project.bootstrap-address");
   private var connected: Option[ConnectAck] = None;
   private var timeoutId: Option[UUID] = None;
-  //edited
-  //OpResponse=>OperationResponse
+  //for pending all the operations with id
+  //if the operation response is received, then it might be removed from the pending list
   private val pending = mutable.SortedMap.empty[UUID, Promise[OperationResponse]];
 
   //******* Handlers ******
@@ -66,7 +71,8 @@ class ClientService extends ComponentDefinition {
   }
 
   net uponEvent {
-    case NetMessage(header, ack @ ConnectAck(id, clusterSize)) => {
+    //receive the connect ack message from server
+    case NetMessage(header, ack@ConnectAck(id, clusterSize)) => {
       log.info(s"Client connected to $server, cluster size is $clusterSize");
       if (id != timeoutId.get) {
         log.error("Received wrong response id! System may be inconsistent. Shutting down...");
@@ -77,41 +83,45 @@ class ClientService extends ComponentDefinition {
       val tc = new Thread(c);
       tc.start();
     }
-//    case NetMessage(header, or @ OpResponse(id, status)) => {
-//      log.debug(s"Got OpResponse: $or");
-//      pending.remove(id) match {
-//        case Some(promise) => promise.success(or);
-//        case None          => log.warn(s"ID $id was not pending! Ignoring response.");
-//      }
-//    }
+    //    case NetMessage(header, or @ OpResponse(id, status)) => {
+    //      log.debug(s"Got OpResponse: $or");
+    //      pending.remove(id) match {
+    //        case Some(promise) => promise.success(or);
+    //        case None          => log.warn(s"ID $id was not pending! Ignoring response.");
+    //      }
+    //    }
 
-    case NetMessage(header, or @ GetResponse(id, status, value)) => {
+    //receive get operation response
+    case NetMessage(header, or@GetResponse(id, status, value)) => {
       log.debug(s"[ClientService] GET Response: $or");
       println("The operation status: " + status);
       println("The value for your key: " + value);
+      //remove the operation from the pending list
       pending.remove(id) match {
         case Some(promise) => promise.success(or);
-        case None          => log.warn(s"ID $id was not pending! Ignoring response.");
+        case None => log.warn(s"ID $id was not pending! Ignoring response.");
       }
     }
 
-    case NetMessage(header, or @ PutResponse(id, status, value)) => {
+    //receive put operation response
+    case NetMessage(header, or@PutResponse(id, status, value)) => {
       log.debug(s"[ClientService] PUT Response: $or");
       println("The operation status: " + status);
       println("The value for your key: " + value);
       pending.remove(id) match {
         case Some(promise) => promise.success(or);
-        case None          => log.warn(s"ID $id was not pending! Ignoring response.");
+        case None => log.warn(s"ID $id was not pending! Ignoring response.");
       }
     }
 
-    case NetMessage(header, or @ CasResponse(id, status, value)) => {
+    //receive cas operation response
+    case NetMessage(header, or@CasResponse(id, status, value)) => {
       log.debug(s"[ClientService] CAS Response: $or");
       println("The operation status: " + status);
       println("The value for your key: " + value);
       pending.remove(id) match {
         case Some(promise) => promise.success(or);
-        case None          => log.warn(s"ID $id was not pending! Ignoring response.");
+        case None => log.warn(s"ID $id was not pending! Ignoring response.");
       }
     }
 
@@ -130,13 +140,17 @@ class ClientService extends ComponentDefinition {
   }
 
   loopbck uponEvent {
+    //send the message with operation to the current server
+    //there is only one partition in the system, so there is no need to route message
     case OpWithPromise(op, promise) => {
       //val rm = RouteMsg(op.key, op); // don't know which partition is responsible, so ask the bootstrap server to forward it
       //trigger(NetMessage(self, server, rm) -> net);
       trigger(NetMessage(self, server, op) -> net);
+      //add the operation to the pending list
       pending += (op.id -> promise);
     }
   }
+
 
   def get(key: String): Future[OperationResponse] = {
     val op = Get(key);
@@ -146,7 +160,7 @@ class ClientService extends ComponentDefinition {
   }
 
   //added
-  def put(key: String, value:String): Future[OperationResponse] = {
+  def put(key: String, value: String): Future[OperationResponse] = {
     val op = Put(key, value);
     val owf = OpWithPromise(op);
     trigger(owf -> onSelf);
@@ -154,7 +168,7 @@ class ClientService extends ComponentDefinition {
   }
 
   //added
-  def cas(key: String, refValue:String, newValue:String): Future[OperationResponse] = {
+  def cas(key: String, refValue: String, newValue: String): Future[OperationResponse] = {
     val op = Cas(key, refValue, newValue);
     val owf = OpWithPromise(op);
     trigger(owf -> onSelf);

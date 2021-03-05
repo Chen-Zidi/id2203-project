@@ -1,4 +1,6 @@
-package se.kth.id2203.BLE;
+package se.kth.id2203.BLE
+
+;
 
 import se.kth.id2203.networking.{NetAddress, NetMessage}
 import se.sics.kompics.network.Network
@@ -9,11 +11,14 @@ import se.sics.kompics.{KompicsEvent, Start}
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer;
 
-class BallotLeaderElection extends Port{
+class BallotLeaderElection extends Port {
   indication[BLE_Leader];
+
+  //used for initializing the topology
   request[BLE_Start];
 }
 
+//used for initializing the topology
 @SerialVersionUID(155271583133228670L)
 case class BLE_Start(pi: Set[NetAddress]) extends KompicsEvent;
 
@@ -30,7 +35,6 @@ case class HeartbeatReq(round: Long, highestBallot: Long) extends KompicsEvent;
 case class HeartbeatResp(round: Long, ballot: Long) extends KompicsEvent;
 
 
-
 //class GossipLeaderElection(init: Init[GossipLeaderElection]) extends ComponentDefinition {
 class GossipLeaderElection extends ComponentDefinition {
 
@@ -42,18 +46,18 @@ class GossipLeaderElection extends ComponentDefinition {
   var topology: Set[NetAddress] = Set();
   val self = cfg.getValue[NetAddress]("id2203.project.address");
 
-//  val (self, topology) = init match{
-//    case Init(self:NetAddress, topology: Set[NetAddress]) => (self, topology)
-//  }
+  //  val (self, topology) = init match{
+  //    case Init(self:NetAddress, topology: Set[NetAddress]) => (self, topology)
+  //  }
   //val self = cfg.getValue[NetAddress]("id2203.project.Address");
   //val topology = ListBuffer.empty[NetAddress];
 
   //what is delta here
   //val delta = cfg.getValue[Long]("ble.simulation.delay");
   val delta = cfg.getValue[Long]("id2203.project.keepAlivePeriod");
-  var majority =  0;
+  var majority = 0;
 
-  //what is period here?
+  //what is period here
   //private var period = cfg.getValue[Long]("ble.simulation.delay");
   private var period = delta;
   private val ballots = mutable.Map.empty[NetAddress, Long];
@@ -90,44 +94,44 @@ class GossipLeaderElection extends ComponentDefinition {
   }
 
   private def makeLeader(topProcess: (Long, NetAddress)) {
-    /* INSERT YOUR CODE HERE */
     leader = Some(topProcess);
   }
 
   private def checkLeader() {
-    /* INSERT YOUR CODE HERE */
+
     var topProcess = self;
     var topBallot = ballot;
 
 
     //   val temp = (self, ballot);
-    ballots += (self->ballot);
+    ballots += (self -> ballot);
     //get top ballot
-    for(b <- ballots){
-      if(b._2 > topBallot){
+    for (b <- ballots) {
+      if (b._2 > topBallot) {
         topBallot = b._2;
         topProcess = b._1;
       }
     }
     var top = (topBallot, topProcess);
-    if(topBallot < highestBallot){
-      while(ballot <= highestBallot){
+    if (topBallot < highestBallot) {
+      while (ballot <= highestBallot) {
         ballot = incrementBallotBy(ballot, 1);
       }
       leader = None;
-    }else{
-      if(Some(top) != leader ){
+    } else {
+      if (Some(top) != leader) {
         highestBallot = topBallot;
         makeLeader((topBallot, topProcess));
         println("[BLE] Ballot leader election end");
-        trigger(BLE_Leader(topProcess, topBallot)->ble);
+        trigger(BLE_Leader(topProcess, topBallot) -> ble);
       }
     }
 
   }
 
   ble uponEvent {
-    case BLE_Start(pi) =>  {
+    //to initialize the topology
+    case BLE_Start(pi) => {
       topology = pi;
       majority = (topology.size / 2) + 1;
       startTimer(period);
@@ -138,15 +142,15 @@ class GossipLeaderElection extends ComponentDefinition {
 
   timer uponEvent {
     case CheckTimeout(_) => {
-      /* INSERT YOUR CODE HERE */
-      if(ballots.size + 1 >= majority){
+
+      if (ballots.size + 1 >= majority) {
         checkLeader();
       }
       ballots.clear;
       round = round + 1;
-      for(p <- topology){
-        if(p != self){
-          trigger(NetMessage(self, p, HeartbeatReq(round, highestBallot))->pl);
+      for (p <- topology) {
+        if (p != self) {
+          trigger(NetMessage(self, p, HeartbeatReq(round, highestBallot)) -> pl);
         }
       }
       startTimer(period);
@@ -155,17 +159,17 @@ class GossipLeaderElection extends ComponentDefinition {
 
   pl uponEvent {
     case NetMessage(header, HeartbeatReq(r, hb)) => {
-      /* INSERT YOUR CODE HERE */
-      if(hb > highestBallot){
+
+      if (hb > highestBallot) {
         highestBallot = hb;
       }
-      trigger(NetMessage(self, header.src, HeartbeatResp(r,ballot))->pl);
+      trigger(NetMessage(self, header.src, HeartbeatResp(r, ballot)) -> pl);
     }
     case NetMessage(header, HeartbeatResp(r, b)) => {
-      /* INSERT YOUR CODE HERE */
-      if(r == round){
+
+      if (r == round) {
         ballots += (header.src -> b);
-      }else{
+      } else {
         period = period + delta;
       }
     }

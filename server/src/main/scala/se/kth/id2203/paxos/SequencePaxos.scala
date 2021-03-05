@@ -1,4 +1,6 @@
-package se.kth.id2203.paxos;
+package se.kth.id2203.paxos
+
+;
 
 import se.kth.id2203.BLE.{BLE_Leader, BLE_Start, BallotLeaderElection, GossipLeaderElection}
 import se.kth.id2203.kvstore.Operation
@@ -10,10 +12,15 @@ import se.sics.kompics.sl._
 import scala.collection.mutable;
 
 case class Prepare(nL: Long, ld: Int, na: Long) extends KompicsEvent;
+
 case class Promise(nL: Long, na: Long, suffix: List[Operation], ld: Int) extends KompicsEvent;
+
 case class AcceptSync(nL: Long, suffix: List[Operation], ld: Int) extends KompicsEvent;
+
 case class Accept(nL: Long, c: Operation) extends KompicsEvent;
+
 case class Accepted(nL: Long, m: Int) extends KompicsEvent;
+
 case class Decide(ld: Int, nL: Long) extends KompicsEvent;
 
 object State extends Enumeration {
@@ -47,10 +54,10 @@ class SequencePaxos extends ComponentDefinition {
   val self = cfg.getValue[NetAddress]("id2203.project.address");
   var others: Set[NetAddress] = Set();
   var majority = 0;
-//  val (self, pi, others) = init match {
-//    case Init(addr: NetAddress, pi: Set[NetAddress] @unchecked) => (addr, pi, pi - addr)
-//  }
-//  val majority = (pi.size / 2) + 1;
+  //  val (self, pi, others) = init match {
+  //    case Init(addr: NetAddress, pi: Set[NetAddress] @unchecked) => (addr, pi, pi - addr)
+  //  }
+  //  val majority = (pi.size / 2) + 1;
 
   var state = (FOLLOWER, UNKOWN);
   var nL = 0l;
@@ -70,46 +77,46 @@ class SequencePaxos extends ComponentDefinition {
 
   ble uponEvent {
     case BLE_Leader(l, n) => {
-        /* INSERT YOUR CODE HERE */
-         println(s"[SC] new Leader: $l");
-        if(n > nL){
-            leader = Some(l);
-            nL = n;
-            if((self == l) && (nL > nProm)){
-                println(s"[SC] I am leader");
-                state = (LEADER, PREPARE);
-                propCmds = List.empty[Operation];
-                las.clear;
-                lds.clear;
-                acks.clear;
-                lc = 0;
-                for(p <- others){
-                    trigger(NetMessage(self, p, Prepare(nL, ld, na))->pl);
-                }
-                acks += (l ->(na, suffix(va, ld)));
-                lds += (self->ld);
-                nProm = nL;
-            }else{
-                state = (FOLLOWER, state._2);
-            }
+
+      println(s"[SC] new Leader: $l");
+      if (n > nL) {
+        leader = Some(l);
+        nL = n;
+        if ((self == l) && (nL > nProm)) {
+          println(s"[SC] I am leader");
+          state = (LEADER, PREPARE);
+          propCmds = List.empty[Operation];
+          las.clear;
+          lds.clear;
+          acks.clear;
+          lc = 0;
+          for (p <- others) {
+            trigger(NetMessage(self, p, Prepare(nL, ld, na)) -> pl);
+          }
+          acks += (l -> (na, suffix(va, ld)));
+          lds += (self -> ld);
+          nProm = nL;
+        } else {
+          state = (FOLLOWER, state._2);
         }
+      }
     }
-   }
+  }
 
   pl uponEvent {
     case NetMessage(header, Prepare(np, ldp, n)) => {
       val p = header.src;
-      /* INSERT YOUR CODE HERE */
-       if(nProm < np){
-          nProm = np;
-          state = (FOLLOWER, PREPARE);
-         println("[SC] I promise to prepare");
-          var sfx = List.empty[Operation];
-          if(na >= n){
-              sfx = suffix(va, ld);
-          }
-          //ldp or ld?
-          trigger(NetMessage(self, p, Promise(np, na, sfx, ldp))-> pl);
+
+      if (nProm < np) {
+        nProm = np;
+        state = (FOLLOWER, PREPARE);
+
+        var sfx = List.empty[Operation];
+        if (na >= n) {
+          sfx = suffix(va, ld);
+        }
+        //ldp or ld?
+        trigger(NetMessage(self, p, Promise(np, na, sfx, ldp)) -> pl);
       }
     }
 
@@ -117,45 +124,45 @@ class SequencePaxos extends ComponentDefinition {
     case NetMessage(header, Promise(n, na, sfxa, lda)) => {
       val a = header.src;
       if ((n == nL) && (state == (LEADER, PREPARE))) {
-        /* INSERT YOUR CODE HERE */
-         acks += (a ->(na, sfxa));
+
+        acks += (a -> (na, sfxa));
         lds += (a -> lda);
         //var P = new HashMap();
         // for(p <- pi){
         //     if(!acks(p).isEmpty)P += (p, acks(p));
         // }
-        if(acks.keySet.size == majority){
-            //max acks[p]
-            var k = 0l;
-            var sfx = List.empty[Operation];
-            for(ack <- acks){
-                //round number is bigger
-                //or round number is the same, the seq size is bigger
-                if((ack._2._1>k)||((ack._2._1 == k)&&(ack._2._2.size > sfx.size))){
-                    sfx = ack._2._2;
-                    k = ack._2._1;
-                }
+        if (acks.keySet.size == majority) {
+          //max acks[p]
+          var k = 0l;
+          var sfx = List.empty[Operation];
+          for (ack <- acks) {
+            //round number is bigger
+            //or round number is the same, the seq size is bigger
+            if ((ack._2._1 > k) || ((ack._2._1 == k) && (ack._2._2.size > sfx.size))) {
+              sfx = ack._2._2;
+              k = ack._2._1;
             }
-            va = prefix(va,ld) ::: sfx ::: propCmds;
+          }
+          va = prefix(va, ld) ::: sfx ::: propCmds;
 
-            las += (self->va.size);
-            propCmds= List.empty[Operation];
-            state = (LEADER, ACCEPT);
-            for(p <- pi){
-                if(lds.contains(p) && (p!=self)){
-                    var sfxTemp = suffix(va, lds(p));
-                    trigger(NetMessage(self, p, AcceptSync(nL, sfxTemp, lds(p)))->pl);
-                }
+          las += (self -> va.size);
+          propCmds = List.empty[Operation];
+          state = (LEADER, ACCEPT);
+          for (p <- pi) {
+            if (lds.contains(p) && (p != self)) {
+              var sfxTemp = suffix(va, lds(p));
+              trigger(NetMessage(self, p, AcceptSync(nL, sfxTemp, lds(p))) -> pl);
             }
+          }
         }
 
       } else if ((n == nL) && (state == (LEADER, ACCEPT))) {
-        /* INSERT YOUR CODE HERE */
-       lds += (a->lda);
+
+        lds += (a -> lda);
         val sfx = suffix(va, lds(a));
-        trigger(NetMessage(self, a, AcceptSync(nL,sfx, lds(a)))->pl);
-        if(lc != 0 ){
-            trigger(NetMessage(self, a, Decide(ld,nL))->pl);
+        trigger(NetMessage(self, a, AcceptSync(nL, sfx, lds(a))) -> pl);
+        if (lc != 0) {
+          trigger(NetMessage(self, a, Decide(ld, nL)) -> pl);
         }
       }
     }
@@ -164,12 +171,12 @@ class SequencePaxos extends ComponentDefinition {
     case NetMessage(header, AcceptSync(nL, sfx, ldp)) => {
       val p = header.src;
       if ((nProm == nL) && (state == (FOLLOWER, PREPARE))) {
-         /* INSERT YOUR CODE HERE */
-          na = nL;
-         //ldp or ld?
-         va = prefix(va, ldp) ::: sfx;
-         trigger(NetMessage(self, p, Accepted(nL, va.size))->pl);
-         state = (FOLLOWER, ACCEPT);
+
+        na = nL;
+        //ldp or ld?
+        va = prefix(va, ldp) ::: sfx;
+        trigger(NetMessage(self, p, Accepted(nL, va.size)) -> pl);
+        state = (FOLLOWER, ACCEPT);
       }
     }
 
@@ -177,94 +184,99 @@ class SequencePaxos extends ComponentDefinition {
     case NetMessage(header, Accept(nL, c)) => {
       val p = header.src;
       if ((nProm == nL) && (state == (FOLLOWER, ACCEPT))) {
-         /* INSERT YOUR CODE HERE */
-          va = va ::: List(c);
+
+        va = va ::: List(c);
         println("[SC] accepting");
-         trigger(NetMessage(self, p, Accepted(nL, va.size))->pl);
+        trigger(NetMessage(self, p, Accepted(nL, va.size)) -> pl);
       }
     }
 
 
     case NetMessage(_, Decide(l, nL)) => {
-       /* INSERT YOUR CODE HERE */
-        if(nProm == nL){
-            while(ld<l){
-                println("[SC] sequence paxos decide: " + va(ld));
-                trigger(SC_Decide(va(ld))->sc);
-                ld += 1;
-            }
-       }
+
+      if (nProm == nL) {
+        while (ld < l) {
+          println("[SC] sequence paxos decide: " + va(ld));
+          trigger(SC_Decide(va(ld)) -> sc);
+          ld += 1;
+        }
+      }
     }
 
 
     case NetMessage(header, Accepted(n, m)) => {
       val a = header.src;
       if ((n == nL) && (state == (LEADER, ACCEPT))) {
-         /* INSERT YOUR CODE HERE */
-         las +=(a-> m);
 
-            var counter = 0;
-            for(p <- pi){
-                if(las.contains(p)){
-                    if(las(p) >= m){
-                        counter += 1;
-                        //pTemp ::: List(p);
-                    }
-                }
+        las += (a -> m);
+
+        var counter = 0;
+        for (p <- pi) {
+          if (las.contains(p)) {
+            if (las(p) >= m) {
+              counter += 1;
+              //pTemp ::: List(p);
             }
-
-            if(counter >= majority && lc < m){
-                lc = m;
-                for(p <- pi){
-                    if(lds.contains(p)){
-                        trigger(NetMessage(self, p, Decide(lc, nL))->pl);
-                    }
-                }
-            }
-
+          }
         }
+
+        if (counter >= majority && lc < m) {
+          lc = m;
+          for (p <- pi) {
+            if (lds.contains(p)) {
+              trigger(NetMessage(self, p, Decide(lc, nL)) -> pl);
+            }
+          }
+        }
+
       }
     }
-
+  }
 
 
   sc uponEvent {
     case SC_Propose(c) => {
 
       if (state == (LEADER, PREPARE)) {
-         /* INSERT YOUR CODE HERE */;
-        println("[SC] sequence paxos propose: " + c );
-          propCmds = propCmds ::: List(c);
+
+        println("[SC] sequence paxos propose: " + c);
+        propCmds = propCmds ::: List(c);
       }
       else if (state == (LEADER, ACCEPT)) {
-         /* INSERT YOUR CODE HERE */
-          va = va ::: List(c);
-          var temp = las(self);
-          temp += 1;
-          las += (self-> temp) ;
-         for(p <- pi){
-             if(lds.contains(p) && (p!=self)){
-                 trigger(NetMessage(self, p,Accept(nL,c))->pl);
-             }
-         }
+
+        va = va ::: List(c);
+        var temp = las(self);
+        temp += 1;
+        las += (self -> temp);
+        for (p <- pi) {
+          if (lds.contains(p) && (p != self)) {
+            trigger(NetMessage(self, p, Accept(nL, c)) -> pl);
+          }
+        }
       }
-      else{
-        if(leader.isDefined){
+      else {
+        //!!!attention here: here is different from the lab assignment
+        //if I am not the leader, but I have a new operation from the client
+        //I have to pass the the operation to the leader(proposer)
+        if (leader.isDefined) { //there exists a leader
           println("[SC] I am not the leader, forward to leader");
-          trigger(NetMessage(self, leader.get, c)->pl);
-        }else{
+          trigger(NetMessage(self, leader.get, c) -> pl); //forward the propose operation to the leader
+        } else {
           println("[SC] No leader yet");
         }
       }
     }
 
+
+    //to set the topology initially in the overlay manager
     case SC_InitializeTopology(topology) => {
       pi = topology;
       others = pi - self;
       majority = (pi.size / 2) + 1;
       println("[SC] Sequence paxos initialize topology");
+      //to initialize the topology of the ballot leader election
       trigger(BLE_Start(pi) -> ble);
-  }
+    }
 
   }
 }

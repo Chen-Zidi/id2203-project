@@ -32,7 +32,8 @@ import se.sics.kompics.sl._
 import se.sics.kompics.network.Network
 
 import java.util.UUID
-import scala.collection.mutable;
+import scala.collection.mutable
+import scala.concurrent.Promise;
 
 
 class KVService extends ComponentDefinition {
@@ -44,12 +45,12 @@ class KVService extends ComponentDefinition {
   //added
   val sc = requires[SequenceConsensus];
 
+  //added
   //stores all key-value pairs
   //initially has three values
   var data = mutable.HashMap("A" -> "Apple", "B" -> "banana", "C" -> "Cherry");
-
-  var pendingList = Map.empty[UUID, NetAddress];
-
+  //to store all operations
+  private val pendingList = mutable.SortedMap.empty[UUID, NetAddress];
   //******* Fields ******
   val self = cfg.getValue[NetAddress]("id2203.project.address");
 
@@ -66,54 +67,67 @@ class KVService extends ComponentDefinition {
   //    }
   //  }
 
+  //receive the operation
   net uponEvent {
     case NetMessage(header, operation: Operation) => {
       log.info(" Got operation: {}", operation);
-      pendingList += (operation.id -> header.src);
-      trigger(SC_Propose(operation) -> sc);
+      pendingList += (operation.id -> header.src); //add to pending list
+      trigger(SC_Propose(operation) -> sc); //propose to the sequence consensus component
     }
   }
 
-  sc uponEvent{
+  sc uponEvent {
+    //sequence consensus decide
     case SC_Decide(operation: Operation) => {
-        log.info("[KVStore - SC] Decide operation: {}", operation);
+      log.info("[KVStore - SC] Decide operation: {}", operation);
       var opSrc = self;
-      if(pendingList.contains(operation.id)){
-        opSrc = pendingList.get(operation.id).get;
+      if (pendingList.contains(operation.id)) {
+        opSrc = pendingList.get(operation.id).get; //get the address of the operation sender
       }
-       operation match{
-         case Get(key,id)=>{
-           if(data.contains(key)){
-             val getValue = data.get(key);
-             println("[KVStore] GET operation: " + key + " - " + getValue);
-             trigger(NetMessage(self, opSrc, GetResponse(id, OpCode.Ok, getValue.get))->net);
-           }else{
-             println("[KVStore] GET operation error: key " + key + " not found");
-             trigger(NetMessage(self, opSrc, GetResponse(id, OpCode.NotFound, "null"))->net);
-           }
-         }
-         case Put(key, value, id)=>{
-           println("[KVStore] PUT operation: " + key + " - " + value);
-           data += (key->value);
-           trigger(NetMessage(self, opSrc, PutResponse(id, OpCode.Ok, value))->net);
-         }
-         case Cas(key, refValue, value, id)=>{
-           if(data.contains(key)){
-             if(data.get(key).get!= refValue){//not match the ref Value
-               println("[KVStore] CAS operation error: " + key + " - " + refValue + " not match");
-               trigger(NetMessage(self, opSrc, CasResponse(id, OpCode.NotFound, "not match"))->net);
-             }else{//success
-               println("[KVStore] CAS operation: " + key + " - " + value);
-               data += (key -> value);
-               trigger(NetMessage(self, opSrc, CasResponse(id, OpCode.Ok, value))->net);
-             }
-           }else{//key not exist
-             println("[KVStore] CAS operation error: " + key + " not found");
-             trigger(NetMessage(self, opSrc, CasResponse(id, OpCode.NotFound, "null"))->net);
-           }
-         }
-       }
-  }
+
+      operation match {
+        case Get(key, id) => { //get operation
+          if (data.contains(key)) { //the key exists
+            val getValue = data.get(key);
+            println("[KVStore] GET operation: " + key + " - " + getValue);
+            //send back the response
+            trigger(NetMessage(self, opSrc, GetResponse(id, OpCode.Ok, getValue.get)) -> net);
+
+            pendingList.remove(id);
+          } else { //key not found
+            println("[KVStore] GET operation error: key " + key + " not found");
+            trigger(NetMessage(self, opSrc, GetResponse(id, OpCode.NotFound, "null")) -> net);
+          }
+        }
+        //put operation
+        case Put(key, value, id) => {
+          println("[KVStore] PUT operation: " + key + " - " + value);
+          data += (key -> value); //update data
+          //send response
+          trigger(NetMessage(self, opSrc, PutResponse(id, OpCode.Ok, value)) -> net);
+          pendingList.remove(id);
+        }
+
+        //cas operation
+        case Cas(key, refValue, value, id) => {
+          if (data.contains(key)) { //if the key exists
+            if (data.get(key).get != refValue) { //not match the ref Value
+              println("[KVStore] CAS operation error: " + key + " - " + refValue + " not match");
+              trigger(NetMessage(self, opSrc, CasResponse(id, OpCode.NotFound, "not match")) -> net);
+
+            } else { //success
+              println("[KVStore] CAS operation: " + key + " - " + value);
+              data += (key -> value);
+              trigger(NetMessage(self, opSrc, CasResponse(id, OpCode.Ok, value)) -> net);
+              pendingList.remove(id);
+            }
+          } else { //key not exist
+            println("[KVStore] CAS operation error: " + key + " not found");
+            trigger(NetMessage(self, opSrc, CasResponse(id, OpCode.NotFound, "null")) -> net);
+          }
+        }
+      }
+    }
 
   }
 
