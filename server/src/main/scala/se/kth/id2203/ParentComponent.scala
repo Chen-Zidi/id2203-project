@@ -63,6 +63,7 @@ class ParentComponent extends ComponentDefinition {
     connect[SequenceConsensus](sc -> overlay);
     connect[BallotLeaderElection](ble->overlay);
 
+
     // KV
     connect(Routing)(overlay -> kv);
     connect[Network](net -> kv);
@@ -75,6 +76,8 @@ class ParentComponent extends ComponentDefinition {
     //ble
     connect[Timer](timer -> ble);
     connect[Network](net -> ble);
+
+
 
   }
 }

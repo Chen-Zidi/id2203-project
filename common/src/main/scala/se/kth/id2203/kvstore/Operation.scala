@@ -74,7 +74,7 @@ case class GetResponse(id: UUID, status: OpCode.OpCode, value: String) extends O
 
 //added
 @SerialVersionUID(155271583133228663L)
-case class PutResponse(id: UUID, status: OpCode.OpCode, value: String) extends OperationResponse with Serializable;
+case class PutResponse(id: UUID, status: OpCode.OpCode) extends OperationResponse with Serializable;
 
 
 //added

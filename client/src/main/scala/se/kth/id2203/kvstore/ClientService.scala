@@ -104,10 +104,10 @@ class ClientService extends ComponentDefinition {
     }
 
     //receive put operation response
-    case NetMessage(header, or@PutResponse(id, status, value)) => {
+    case NetMessage(header, or@PutResponse(id, status)) => {
       log.debug(s"[ClientService] PUT Response: $or");
       println("The operation status: " + status);
-      println("The value for your key: " + value);
+      //println("The value for your key: " + value);
       pending.remove(id) match {
         case Some(promise) => promise.success(or);
         case None => log.warn(s"ID $id was not pending! Ignoring response.");
@@ -115,10 +115,10 @@ class ClientService extends ComponentDefinition {
     }
 
     //receive cas operation response
-    case NetMessage(header, or@CasResponse(id, status, value)) => {
+    case NetMessage(header, or@CasResponse(id, status, refValue)) => {
       log.debug(s"[ClientService] CAS Response: $or");
       println("The operation status: " + status);
-      println("The value for your key: " + value);
+      println("The old value for your key: " + refValue);
       pending.remove(id) match {
         case Some(promise) => promise.success(or);
         case None => log.warn(s"ID $id was not pending! Ignoring response.");

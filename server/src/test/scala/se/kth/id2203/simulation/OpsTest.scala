@@ -57,18 +57,30 @@ class OpsTest extends FlatSpec with Matchers {
   //    }
   //  }
 
-  "Simple Operations" should "not be implemented" in { // well of course eventually they should be implemented^^
+  "Put Operations" should "update the key-value pair" in {
     val seed = 123l;
     JSimulationScenario.setSeed(seed);
-    val simpleBootScenario = SimpleScenario.scenario(3);
+
+    //val simpleBootScenario = SimpleScenario.scenario(3);
+    val simpleBootScenario = SimpleScenario.scenario(4);
     val res = SimulationResultSingleton.getInstance();
     SimulationResult += ("messages" -> nMessages);
+
+
     simpleBootScenario.simulate(classOf[LauncherComp]);
+
+
     for (i <- 0 to nMessages) {
-      //SimulationResult.get[String](s"test$i") should be (Some("NotImplemented"));
-      SimulationResult.get[String](s"test$i") should be (Some("Sent"));
+
+      SimulationResult.get[String](s"put $i") should be (Some("Sent"));
       // of course the correct response should be Success not NotImplemented, but like this the test passes
     }
+  }
+
+  "Get operation" should "get the value with the key" in {
+    val seed = 123l;
+    JSimulationScenario.setSeed(seed);
+    val simpleBootScenario = SimpleScenario.scenario(4);
   }
 
 }

@@ -1,6 +1,6 @@
-package se.kth.id2203.BLE
+package se.kth.id2203.BLE;
 
-;
+
 
 import se.kth.id2203.networking.{NetAddress, NetMessage}
 import se.sics.kompics.network.Network
@@ -19,23 +19,16 @@ class BallotLeaderElection extends Port {
 }
 
 //used for initializing the topology
-@SerialVersionUID(155271583133228670L)
 case class BLE_Start(pi: Set[NetAddress]) extends KompicsEvent;
 
-@SerialVersionUID(155271583133228671L)
 case class BLE_Leader(address: NetAddress, l: Long) extends KompicsEvent;
 
-@SerialVersionUID(155271583133228672L)
 case class CheckTimeout(timeout: ScheduleTimeout) extends Timeout(timeout);
 
-@SerialVersionUID(155271583133228673L)
 case class HeartbeatReq(round: Long, highestBallot: Long) extends KompicsEvent;
 
-@SerialVersionUID(155271583133228674L)
 case class HeartbeatResp(round: Long, ballot: Long) extends KompicsEvent;
 
-
-//class GossipLeaderElection(init: Init[GossipLeaderElection]) extends ComponentDefinition {
 class GossipLeaderElection extends ComponentDefinition {
 
 

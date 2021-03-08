@@ -25,7 +25,7 @@ package se.kth.id2203.overlay
 
 ;
 
-import se.kth.id2203.BLE.{BLE_Start, BallotLeaderElection}
+import se.kth.id2203.BLE.BallotLeaderElection
 import se.kth.id2203.bootstrapping._
 import se.kth.id2203.kvstore.Operation
 import se.kth.id2203.networking._
@@ -62,10 +62,16 @@ class VSOverlayManager extends ComponentDefinition {
   //connect to the sequence consensus componement
   val sc = requires[SequenceConsensus];
   val ble = requires[BallotLeaderElection];
+  //val fd = requires[FailureDetector];
 
   //******* Fields ******
   val self = cfg.getValue[NetAddress]("id2203.project.address");
   private var lut: Option[LookupTable] = None;
+
+  //store all the nodes
+  var nodeList = Set.empty[NetAddress];
+  var suspectNodeList = Set.empty[NetAddress];
+
   //******* Handlers ******
   boot uponEvent {
     case GetInitialAssignments(nodes) => { //generate lookup table
@@ -79,16 +85,46 @@ class VSOverlayManager extends ComponentDefinition {
       log.info("Got NodeAssignment, overlay ready.");
       lut = Some(assignment);
 
+      nodeList = lut.get.getNodes();
+
+      println("[Overlay manager] set fd and sc with " + nodeList.size + " servers");
+
+
       //inform the sequence paxos component and ballot election component
       //trigger(BLE_Start(lut.get.getNodes())->ble);
+      //trigger(FD_InitializeTopology(lut.get.getNodes())->fd);
       trigger(SC_InitializeTopology(lut.get.getNodes()) -> sc);
+
 
     }
   }
 
+//  fd uponEvent{
+//    case Suspect(src: NetAddress) => {
+//
+//      suspectNodeList = suspectNodeList + src;
+//      nodeList = nodeList - src;
+//      println("[Overlay manager] remove " + src + "from list");
+//      val lut = LookupTable.generate(nodeList);
+//      trigger(InitialAssignments(lut) -> boot);
+//
+//      //trigger(SC_InitializeTopology(nodeList) ->sc);
+//    }
+//
+//    case Restore(src: NetAddress) =>{
+//      if(suspectNodeList.contains(src)){
+//        suspectNodeList = suspectNodeList - src;
+//        nodeList = nodeList + src;
+//        println("[Overlay manager] restore " + src + "from list");
+//        val lut = LookupTable.generate(nodeList);
+//        trigger(InitialAssignments(lut) -> boot);
+//        //trigger(SC_InitializeTopology(nodeList) ->sc);
+//      }
+//
+//    }
+//  }
+
   net uponEvent {
-
-
     //not need for routing
     // keep for OpsTest
         case NetMessage(header, RouteMsg(key, msg)) => {

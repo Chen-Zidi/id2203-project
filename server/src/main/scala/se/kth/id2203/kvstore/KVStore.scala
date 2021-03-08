@@ -81,8 +81,11 @@ class KVService extends ComponentDefinition {
     case SC_Decide(operation: Operation) => {
       log.info("[KVStore - SC] Decide operation: {}", operation);
       var opSrc = self;
-      if (pendingList.contains(operation.id)) {
+
+      if(pendingList.contains(operation.id)){//only the leader or the one who receive this operation request would response
         opSrc = pendingList.get(operation.id).get; //get the address of the operation sender
+      }else{
+        println("[KVStore] no such operation in the pending list: " + operation.toString);
       }
 
       operation match {
@@ -104,7 +107,7 @@ class KVService extends ComponentDefinition {
           println("[KVStore] PUT operation: " + key + " - " + value);
           data += (key -> value); //update data
           //send response
-          trigger(NetMessage(self, opSrc, PutResponse(id, OpCode.Ok, value)) -> net);
+          trigger(NetMessage(self, opSrc, PutResponse(id, OpCode.Ok)) -> net);
           pendingList.remove(id);
         }
 
@@ -118,7 +121,8 @@ class KVService extends ComponentDefinition {
             } else { //success
               println("[KVStore] CAS operation: " + key + " - " + value);
               data += (key -> value);
-              trigger(NetMessage(self, opSrc, CasResponse(id, OpCode.Ok, value)) -> net);
+              //return old value
+              trigger(NetMessage(self, opSrc, CasResponse(id, OpCode.Ok, refValue)) -> net);
               pendingList.remove(id);
             }
           } else { //key not exist

@@ -53,7 +53,6 @@ object Main {
 
   def main(args: Array[String]): Unit = {
     val conf = new Conf(args.toSeq);
-    printf("my conf is: %s \n" , conf);
     // avoid constant conversion of the address by converting once and reassigning
     // sorry Java API  only :(
     val c = Kompics.getConfig().asInstanceOf[Config.Impl];
