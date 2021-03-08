@@ -61,7 +61,6 @@ class VSOverlayManager extends ComponentDefinition {
 
   //connect to the sequence consensus componement
   val sc = requires[SequenceConsensus];
-  val ble = requires[BallotLeaderElection];
   //val fd = requires[FailureDetector];
 
   //******* Fields ******
