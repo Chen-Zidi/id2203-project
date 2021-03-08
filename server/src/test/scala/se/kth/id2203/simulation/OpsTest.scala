@@ -57,7 +57,7 @@ class OpsTest extends FlatSpec with Matchers {
   //    }
   //  }
 
-  "Put Operations" should "update the key-value pair" in {
+  "Operations" should "be implemented" in {
     val seed = 123l;
     JSimulationScenario.setSeed(seed);
 
@@ -70,18 +70,24 @@ class OpsTest extends FlatSpec with Matchers {
     simpleBootScenario.simulate(classOf[LauncherComp]);
 
 
-    for (i <- 0 to nMessages) {
+    for (i <- nMessages/2 + 1 to nMessages) {//the later 5 key-value pairs are not being cas
+      //PUT
+      SimulationResult.get[String](s"test$i") should be (Some(s"tValue$i"));
+      //GET
+      SimulationResult.get[String](s"test$i") should be (Some(s"tValue$i"));
+    }
 
-      SimulationResult.get[String](s"put $i") should be (Some("Sent"));
-      // of course the correct response should be Success not NotImplemented, but like this the test passes
+    for (i <- 0 to nMessages/2) {
+      //CAS
+      SimulationResult.get[String](s"test$i") should be (Some(s"newValue$i"));
     }
   }
 
-  "Get operation" should "get the value with the key" in {
-    val seed = 123l;
-    JSimulationScenario.setSeed(seed);
-    val simpleBootScenario = SimpleScenario.scenario(4);
-  }
+//  "Get operation" should "get the value with the key" in {
+//    val seed = 123l;
+//    JSimulationScenario.setSeed(seed);
+//    val simpleBootScenario = SimpleScenario.scenario(4);
+//  }
 
 }
 
@@ -134,12 +140,16 @@ object SimpleScenario {
 
   def scenario(servers: Int): JSimulationScenario = {
 
-    val networkSetup = raise(1, setUniformLatencyNetwork()).arrival(constant(0));
+    //val networkSetup = raise(1, setUniformLatencyNetwork()).arrival(constant(0));
     val startCluster = raise(servers, startServerOp, 1.toN).arrival(constant(1.second));
     val startClients = raise(1, startClientOp, 1.toN).arrival(constant(1.second));
 
-    networkSetup andThen
-      0.seconds afterTermination startCluster andThen
+//    networkSetup andThen
+//      0.seconds afterTermination startCluster andThen
+//      10.seconds afterTermination startClients andThen
+//      100.seconds afterTermination Terminate
+
+    startCluster andThen
       10.seconds afterTermination startClients andThen
       100.seconds afterTermination Terminate
   }

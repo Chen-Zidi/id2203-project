@@ -107,7 +107,7 @@ class KVService extends ComponentDefinition {
           println("[KVStore] PUT operation: " + key + " - " + value);
           data += (key -> value); //update data
           //send response
-          trigger(NetMessage(self, opSrc, PutResponse(id, OpCode.Ok)) -> net);
+          trigger(NetMessage(self, opSrc, PutResponse(id, OpCode.Ok, value)) -> net);
           pendingList.remove(id);
         }
 
@@ -115,19 +115,19 @@ class KVService extends ComponentDefinition {
         case Cas(key, refValue, value, id) => {
           if (data.contains(key)) { //if the key exists
             if (data.get(key).get != refValue) { //not match the ref Value
-              println("[KVStore] CAS operation error: " + key + " - " + refValue + " not match");
-              trigger(NetMessage(self, opSrc, CasResponse(id, OpCode.NotFound, "not match")) -> net);
+              println("[KVStore] CAS operation error: " + key + " - " + refValue + " value not match");
+              trigger(NetMessage(self, opSrc, CasResponse(id, OpCode.NotFound, refValue ,refValue)) -> net);
 
             } else { //success
               println("[KVStore] CAS operation: " + key + " - " + value);
               data += (key -> value);
               //return old value
-              trigger(NetMessage(self, opSrc, CasResponse(id, OpCode.Ok, refValue)) -> net);
+              trigger(NetMessage(self, opSrc, CasResponse(id, OpCode.Ok, refValue, value)) -> net);
               pendingList.remove(id);
             }
           } else { //key not exist
-            println("[KVStore] CAS operation error: " + key + " not found");
-            trigger(NetMessage(self, opSrc, CasResponse(id, OpCode.NotFound, "null")) -> net);
+            println("[KVStore] CAS operation error: " + key + " key not found");
+            trigger(NetMessage(self, opSrc, CasResponse(id, OpCode.NotFound, refValue, refValue)) -> net);
           }
         }
       }

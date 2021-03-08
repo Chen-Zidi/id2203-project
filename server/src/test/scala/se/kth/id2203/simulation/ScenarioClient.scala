@@ -47,24 +47,72 @@ class ScenarioClient extends ComponentDefinition {
   ctrl uponEvent {
     case _: Start => {
       val messages = SimulationResult[Int]("messages");
+
+      //put operation
       for (i <- 0 to messages) {
-        val op = new Get(s"test$i");
-        val routeMsg = RouteMsg(op.key, op); // don't know which partition is responsible, so ask the bootstrap server to forward it
+        val put = new Put(s"test$i", s"tValue$i");
+        val routeMsg = RouteMsg(put.key, put); // don't know which partition is responsible, so ask the bootstrap server to forward it
         trigger(NetMessage(self, server, routeMsg) -> net);
-        pending += (op.id -> op.key);
-        logger.info("Sending {}", op);
-        SimulationResult += (op.key -> "Sent");
+        sendOp(put);
       }
+
+      //get operation
+      for (i <- 0 to messages) {
+        val get = new Get(s"test$i");
+        val routeMsg = RouteMsg(get.key, get); // don't know which partition is responsible, so ask the bootstrap server to forward it
+        trigger(NetMessage(self, server, routeMsg) -> net);
+        sendOp(get);
+      }
+
+      //cas operation
+      for (i <- 0 to messages/2) {//cas the first 5 key-value pairs
+        val cas = new Cas(s"test$i", s"tValue$i", s"newValue$i");
+        val routeMsg = RouteMsg(cas.key, cas); // don't know which partition is responsible, so ask the bootstrap server to forward it
+        trigger(NetMessage(self, server, routeMsg) -> net);
+        sendOp(cas);
+      }
+
     }
+  }
+  def sendOp(op:Operation): Unit ={
+    trigger(NetMessage(self, server, op)->net);
+    pending += (op.id -> op.key);
+    logger.info("Sending {}", op);
+    SimulationResult += (op.key -> self.toString);
   }
 
   net uponEvent {
-    case NetMessage(header, or @ OpResponse(id, status)) => {
-      logger.debug(s"Got OpResponse: $or");
+//    case NetMessage(header, or @ OpResponse(id, status)) => {
+//      logger.debug(s"Got OpResponse: $or");
+//      pending.remove(id) match {
+//        case Some(key) => SimulationResult += (key -> status.toString());
+//        case None      => logger.warn("ID $id was not pending! Ignoring response.");
+//      }
+//    }
+
+    case NetMessage(header, or @ PutResponse(id, status, value)) => {
+      logger.debug(s"put operation response: $or");
       pending.remove(id) match {
-        case Some(key) => SimulationResult += (key -> status.toString());
+        case Some(key) => SimulationResult += (key -> value);
         case None      => logger.warn("ID $id was not pending! Ignoring response.");
       }
     }
+
+    case NetMessage(header, or @ GetResponse(id, status, value)) => {
+      logger.debug(s"get operation response: $or");
+      pending.remove(id) match {
+        case Some(key) => SimulationResult += (key -> value);
+        case None      => logger.warn("ID $id was not pending! Ignoring response.");
+      }
+    }
+
+    case NetMessage(header, or @ CasResponse(id, status, oldValue, newValue)) => {
+      logger.debug(s"cas operation response: $or");
+      pending.remove(id) match {
+        case Some(key) => SimulationResult += (key -> newValue);//new value here in the result
+        case None      => logger.warn("ID $id was not pending! Ignoring response.");
+      }
+    }
+
   }
 }
