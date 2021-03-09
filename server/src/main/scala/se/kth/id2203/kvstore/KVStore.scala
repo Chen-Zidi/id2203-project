@@ -48,7 +48,9 @@ class KVService extends ComponentDefinition {
   //added
   //stores all key-value pairs
   //initially has three values
-  var data = mutable.HashMap("A" -> "Apple", "B" -> "banana", "C" -> "Cherry");
+  var data = mutable.HashMap("A" -> "Abra", "B" -> "Bagon", "C" -> "Charmander",
+    "TestCase0" -> "TestValue0", "TestCase1" -> "TestValue1", "TestCase2" -> "TestValue2","TestCase3" -> "TestValue3",
+    "testCase0" -> "testValue0", "testCase1" -> "testValue1", "testCase2" -> "testValue2", "testCase3" -> "testValue3");
   //to store all operations
   private val pendingList = mutable.SortedMap.empty[UUID, NetAddress];
   //******* Fields ******

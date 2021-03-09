@@ -27,10 +27,10 @@ import org.scalatest._
 import se.kth.id2203.ParentComponent;
 import se.kth.id2203.networking._;
 import se.sics.kompics.network.Address
-import java.net.{ InetAddress, UnknownHostException };
+import java.net.{InetAddress, UnknownHostException};
 import se.sics.kompics.sl._;
 import se.sics.kompics.sl.simulator._;
-import se.sics.kompics.simulator.{ SimulationScenario => JSimulationScenario }
+import se.sics.kompics.simulator.{SimulationScenario => JSimulationScenario}
 import se.sics.kompics.simulator.run.LauncherComp
 import se.sics.kompics.simulator.result.SimulationResultSingleton;
 import se.sics.kompics.simulator.network.impl.NetworkModels
@@ -38,8 +38,8 @@ import scala.concurrent.duration._
 
 class OpsTest extends FlatSpec with Matchers {
 
-  private val nMessages = 10;
-
+  private val nMessages = 3;
+  private val serverNum = 4;
   //  "Classloader" should "be something" in {
   //    val cname = classOf[SimulationResultSingleton].getCanonicalName();
   //    var cl = classOf[SimulationResultSingleton].getClassLoader;
@@ -57,101 +57,62 @@ class OpsTest extends FlatSpec with Matchers {
   //    }
   //  }
 
-  "Operations" should "be implemented" in {
+  //  "Operations" should "be implemented" in {
+  //    val seed = 123l;
+  //    JSimulationScenario.setSeed(seed);
+  //
+  //    //val simpleBootScenario = SimpleScenario.scenario(3);
+  //    val simpleBootScenario = SimpleScenario.scenario(4);
+  //    val res = SimulationResultSingleton.getInstance();
+  //    SimulationResult += ("messages" -> nMessages);
+  //
+  //
+  //    simpleBootScenario.simulate(classOf[LauncherComp]);
+  //
+  //
+  //    for (i <- nMessages/2 + 1 to nMessages) {//the later 5 key-value pairs are not being cas
+  //      //PUT
+  //      //SimulationResult.get[String](s"test$i") should be (Some(s"tValue$i"));
+  //      SimulationResult.get[String](s"test$i") should be (Some(s"Ok"));
+  //      //GET
+  //      SimulationResult.get[String](s"test$i") should be (Some(s"tValue$i"));
+  //    }
+  //
+  //    for (i <- 0 to nMessages/2) {
+  //      //CAS
+  //      SimulationResult.get[String](s"test$i") should be (Some(s"newValue$i"));
+  //    }
+  //  }
+
+  "simple operation" should "be implemented" in {
     val seed = 123l;
     JSimulationScenario.setSeed(seed);
-
-    //val simpleBootScenario = SimpleScenario.scenario(3);
-    val simpleBootScenario = SimpleScenario.scenario(4);
+    val simpleBootScenario = SimpleScenario.scenario(serverNum);
     val res = SimulationResultSingleton.getInstance();
     SimulationResult += ("messages" -> nMessages);
-
-
     simpleBootScenario.simulate(classOf[LauncherComp]);
 
-
-    for (i <- nMessages/2 + 1 to nMessages) {//the later 5 key-value pairs are not being cas
+    for (i <- 0 to nMessages) {
       //PUT
-      SimulationResult.get[String](s"test$i") should be (Some(s"tValue$i"));
+      SimulationResult.get[String](s"test$i") should be(Some(s"value$i"));
+
+    }
+
+    for(i <- 0 to nMessages){
       //GET
-      SimulationResult.get[String](s"test$i") should be (Some(s"tValue$i"));
+      SimulationResult.get[String](s"testCase$i") should be(Some(s"testValue$i"));
     }
 
-    for (i <- 0 to nMessages/2) {
+    for(i <- 0 to nMessages) {
       //CAS
-      SimulationResult.get[String](s"test$i") should be (Some(s"newValue$i"));
+      SimulationResult.get[String](s"TestCase$i") should be(Some(s"NewTestValue$i"));
     }
+
   }
 
-//  "Get operation" should "get the value with the key" in {
-//    val seed = 123l;
-//    JSimulationScenario.setSeed(seed);
-//    val simpleBootScenario = SimpleScenario.scenario(4);
-//  }
 
 }
 
-object SimpleScenario {
 
-  import Distributions._
-  // needed for the distributions, but needs to be initialised after setting the seed
-  implicit val random = JSimulationScenario.getRandom();
 
-  private def intToServerAddress(i: Int): Address = {
-    try {
-      NetAddress(InetAddress.getByName("192.193.0." + i), 45678);
-    } catch {
-      case ex: UnknownHostException => throw new RuntimeException(ex);
-    }
-  }
-  private def intToClientAddress(i: Int): Address = {
-    try {
-      NetAddress(InetAddress.getByName("192.193.1." + i), 45678);
-    } catch {
-      case ex: UnknownHostException => throw new RuntimeException(ex);
-    }
-  }
 
-  private def isBootstrap(self: Int): Boolean = self == 1;
-
-  val setUniformLatencyNetwork = () => Op.apply((_: Unit) => ChangeNetwork(NetworkModels.withUniformRandomDelay(3, 7)));
-
-  val startServerOp = Op { (self: Integer) =>
-
-    val selfAddr = intToServerAddress(self)
-    val conf = if (isBootstrap(self)) {
-      // don't put this at the bootstrap server, or it will act as a bootstrap client
-      Map("id2203.project.address" -> selfAddr)
-    } else {
-      Map(
-        "id2203.project.address" -> selfAddr,
-        "id2203.project.bootstrap-address" -> intToServerAddress(1))
-    };
-    StartNode(selfAddr, Init.none[ParentComponent], conf);
-  };
-
-  val startClientOp = Op { (self: Integer) =>
-    val selfAddr = intToClientAddress(self)
-    val conf = Map(
-      "id2203.project.address" -> selfAddr,
-      "id2203.project.bootstrap-address" -> intToServerAddress(1));
-    StartNode(selfAddr, Init.none[ScenarioClient], conf);
-  };
-
-  def scenario(servers: Int): JSimulationScenario = {
-
-    //val networkSetup = raise(1, setUniformLatencyNetwork()).arrival(constant(0));
-    val startCluster = raise(servers, startServerOp, 1.toN).arrival(constant(1.second));
-    val startClients = raise(1, startClientOp, 1.toN).arrival(constant(1.second));
-
-//    networkSetup andThen
-//      0.seconds afterTermination startCluster andThen
-//      10.seconds afterTermination startClients andThen
-//      100.seconds afterTermination Terminate
-
-    startCluster andThen
-      10.seconds afterTermination startClients andThen
-      100.seconds afterTermination Terminate
-  }
-
-}

@@ -21,7 +21,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package se.kth.id2203.simulation;
+package se.kth.id2203.simulation
 
 import java.util.UUID;
 import se.kth.id2203.kvstore._;
@@ -50,46 +50,50 @@ class ScenarioClient extends ComponentDefinition {
 
       //put operation
       for (i <- 0 to messages) {
-        val put = new Put(s"test$i", s"tValue$i");
-        val routeMsg = RouteMsg(put.key, put); // don't know which partition is responsible, so ask the bootstrap server to forward it
+        val put = new Put(s"test$i", s"value$i");
+        var routeMsg = RouteMsg(put.key, put); // don't know which partition is responsible, so ask the bootstrap server to forward it
         trigger(NetMessage(self, server, routeMsg) -> net);
-        sendOp(put);
+
+        //trigger(NetMessage(self, server, put)->net);
+        logger.info("Sending {}", put);
+
+        SimulationResult += (put.key -> "Sent");
+        pending += (put.id -> put.key);
       }
 
       //get operation
       for (i <- 0 to messages) {
-        val get = new Get(s"test$i");
+        val get = new Get(s"testCase$i");
+
         val routeMsg = RouteMsg(get.key, get); // don't know which partition is responsible, so ask the bootstrap server to forward it
         trigger(NetMessage(self, server, routeMsg) -> net);
-        sendOp(get);
+
+        //trigger(NetMessage(self, server, get)->net);
+        logger.info("Sending {}", get);
+
+        SimulationResult += (get.key -> "Sent");
+        pending += (get.id -> get.key);
       }
 
       //cas operation
-      for (i <- 0 to messages/2) {//cas the first 5 key-value pairs
-        val cas = new Cas(s"test$i", s"tValue$i", s"newValue$i");
+      for (i <- 0 to messages) {
+        val cas = new Cas(s"TestCase$i", s"TestValue$i", s"NewTestValue$i");
         val routeMsg = RouteMsg(cas.key, cas); // don't know which partition is responsible, so ask the bootstrap server to forward it
         trigger(NetMessage(self, server, routeMsg) -> net);
-        sendOp(cas);
+        logger.info("Sending {}", cas);
+        pending += (cas.id -> cas.key);
+        SimulationResult += (cas.key -> "Sent");
       }
 
+
+
     }
+
+
   }
-  def sendOp(op:Operation): Unit ={
-    trigger(NetMessage(self, server, op)->net);
-    pending += (op.id -> op.key);
-    logger.info("Sending {}", op);
-    SimulationResult += (op.key -> self.toString);
-  }
+
 
   net uponEvent {
-//    case NetMessage(header, or @ OpResponse(id, status)) => {
-//      logger.debug(s"Got OpResponse: $or");
-//      pending.remove(id) match {
-//        case Some(key) => SimulationResult += (key -> status.toString());
-//        case None      => logger.warn("ID $id was not pending! Ignoring response.");
-//      }
-//    }
-
     case NetMessage(header, or @ PutResponse(id, status, value)) => {
       logger.debug(s"put operation response: $or");
       pending.remove(id) match {
