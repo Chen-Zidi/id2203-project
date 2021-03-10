@@ -2,7 +2,7 @@ package se.kth.id2203.simulation
 
 import se.kth.id2203.ParentComponent
 import se.kth.id2203.networking.NetAddress
-import se.kth.id2203.simulation.ScenarioClient
+import se.kth.id2203.simulation.OperationClientScenario
 import se.sics.kompics.network.Address
 import se.sics.kompics.simulator.network.impl.NetworkModels
 import se.sics.kompics.sl.Init
@@ -39,7 +39,7 @@ object SimpleScenario {
     }
   }
 
-  private def intToClientAddress(i: Int): Address = {
+  def intToClientAddress(i: Int): Address = {
     try {
       NetAddress(InetAddress.getByName("192.193.1." + i), 45678);
     } catch {
@@ -70,7 +70,10 @@ object SimpleScenario {
     val conf = Map(
       "id2203.project.address" -> selfAddr,
       "id2203.project.bootstrap-address" -> intToServerAddress(1));
-    StartNode(selfAddr, Init.none[ScenarioClient], conf);
+
+      StartNode(selfAddr, Init.none[OperationClientScenario], conf);
+
+
   };
 
   def scenario(servers: Int): JSimulationScenario = {

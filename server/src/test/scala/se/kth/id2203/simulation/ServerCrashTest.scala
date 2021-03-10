@@ -12,7 +12,7 @@ class ServerCrashTest extends FlatSpec with Matchers {
   "single server crash" should "not effect on the system" in {
     val seed = 123l;
     JSimulationScenario.setSeed(seed);
-    val simpleBootScenario = CrashScenario.scenario(serverNum);
+    val simpleBootScenario = ServerCrashScenario.scenario(serverNum);
 
     val res = SimulationResultSingleton.getInstance();
 

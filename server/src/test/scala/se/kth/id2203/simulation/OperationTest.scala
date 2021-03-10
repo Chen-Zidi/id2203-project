@@ -36,7 +36,7 @@ import se.sics.kompics.simulator.result.SimulationResultSingleton;
 import se.sics.kompics.simulator.network.impl.NetworkModels
 import scala.concurrent.duration._
 
-class OpsTest extends FlatSpec with Matchers {
+class OperationTest extends FlatSpec with Matchers {
 
   private val nMessages = 3;
   private val serverNum = 4;
@@ -84,7 +84,7 @@ class OpsTest extends FlatSpec with Matchers {
   //    }
   //  }
 
-  "simple operation" should "be implemented" in {
+  "simple operation" should "be implemented and linearizable" in {
     val seed = 123l;
     JSimulationScenario.setSeed(seed);
     val simpleBootScenario = SimpleScenario.scenario(serverNum);
@@ -107,9 +107,22 @@ class OpsTest extends FlatSpec with Matchers {
       //CAS
       SimulationResult.get[String](s"TestCase$i") should be(Some(s"NewTestValue$i"));
     }
-
+    SimulationResult.get[String](s"counter_put") should be(Some(s"1"));
+    SimulationResult.get[String](s"counter_get") should be(Some(s"2"));
   }
 
+
+//  "system" should "linearlizable" in {
+//    val seed = 123l;
+//    JSimulationScenario.setSeed(seed);
+//    val simpleBootScenario = SimpleScenario.scenario(serverNum);
+//    val res = SimulationResultSingleton.getInstance();
+//    SimulationResult += ("messages" -> nMessages);
+//    simpleBootScenario.simulate(classOf[LauncherComp]);
+//
+//
+//
+//  }
 
 }
 

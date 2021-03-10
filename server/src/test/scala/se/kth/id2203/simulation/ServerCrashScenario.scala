@@ -2,7 +2,7 @@ package se.kth.id2203.simulation
 
 import se.kth.id2203.ParentComponent
 import se.kth.id2203.networking.NetAddress
-import se.kth.id2203.simulation.ScenarioClient
+import se.kth.id2203.simulation.OperationClientScenario
 import se.sics.kompics.network.Address
 import se.sics.kompics.simulator.network.impl.NetworkModels
 import se.sics.kompics.sl.Init
@@ -24,7 +24,7 @@ import se.sics.kompics.simulator.result.SimulationResultSingleton;
 import se.sics.kompics.simulator.network.impl.NetworkModels
 import scala.concurrent.duration._
 
-object CrashScenario {
+object ServerCrashScenario {
 
   import Distributions._
 
