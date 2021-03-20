@@ -51,16 +51,21 @@ object ServerCrashScenario {
 
   def scenario(servers: Int): JSimulationScenario = {
 
-    val networkSetup = raise(1, SimpleScenario.setUniformLatencyNetwork()).arrival(constant(0));
+    //val networkSetup = raise(1, SimpleScenario.setUniformLatencyNetwork()).arrival(constant(0));
     val startCluster = raise(servers, SimpleScenario.startServerOp, 1.toN).arrival(constant(1.second));
     val startClients = raise(1, SimpleScenario.startClientOp, 1.toN).arrival(constant(1.second));
     val crashServer = raise(1, serverCrashOp, 2.toN).arrival(constant(1.second));
 
-        networkSetup andThen
-          0.seconds afterTermination startCluster andThen
-          10.seconds afterTermination startClients andThen
-          50.seconds afterTermination crashServer andThen
-          100.seconds afterTermination Terminate
+//        networkSetup andThen
+//          0.seconds afterTermination startCluster andThen
+//          10.seconds afterTermination startClients andThen
+//          50.seconds afterTermination crashServer andThen
+//          100.seconds afterTermination Terminate
+
+    startCluster andThen
+      10.seconds afterTermination startClients andThen
+      50.seconds afterTermination crashServer andThen
+      100.seconds afterTermination Terminate
 
   }
 

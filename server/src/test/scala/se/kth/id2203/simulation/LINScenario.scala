@@ -2,29 +2,15 @@ package se.kth.id2203.simulation
 
 import se.kth.id2203.ParentComponent
 import se.kth.id2203.networking.NetAddress
-import se.kth.id2203.simulation.OperationClientScenario
 import se.sics.kompics.network.Address
-import se.sics.kompics.simulator.network.impl.NetworkModels
+import se.sics.kompics.simulator.{SimulationScenario => JSimulationScenario}
 import se.sics.kompics.sl.Init
-import se.sics.kompics.sl.simulator.Distributions.constant
-import se.sics.kompics.sl.simulator.{ChangeNetwork, Distributions, Op, StartNode, raise}
-import se.sics.kompics.simulator.{SimulationScenario => JSimulationScenario}
-import java.net.{InetAddress, UnknownHostException}
+import se.sics.kompics.sl.simulator.{Distributions, Op, StartNode, raise, _}
 
-import org.scalatest._
-import se.kth.id2203.ParentComponent;
-import se.kth.id2203.networking._;
-import se.sics.kompics.network.Address
-import java.net.{InetAddress, UnknownHostException};
-import se.sics.kompics.sl._;
-import se.sics.kompics.sl.simulator._;
-import se.sics.kompics.simulator.{SimulationScenario => JSimulationScenario}
-import se.sics.kompics.simulator.run.LauncherComp
-import se.sics.kompics.simulator.result.SimulationResultSingleton;
-import se.sics.kompics.simulator.network.impl.NetworkModels
+import java.net.{InetAddress, UnknownHostException}
 import scala.concurrent.duration._
 
-object SimpleScenario {
+object LINScenario {
 
   import Distributions._
 
@@ -72,7 +58,7 @@ object SimpleScenario {
       "id2203.project.address" -> selfAddr,
       "id2203.project.bootstrap-address" -> intToServerAddress(1));
 
-      StartNode(selfAddr, Init.none[OperationClientScenario], conf);
+      StartNode(selfAddr, Init.none[LINClientScenario], conf);
 
 
   };

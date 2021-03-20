@@ -44,8 +44,6 @@ class OperationClientScenario extends ComponentDefinition {
   val server = cfg.getValue[NetAddress]("id2203.project.bootstrap-address");
   private val pending = mutable.Map.empty[UUID, String];
 
-  private val linPending = mutable.Map.empty[UUID, String];
-  private var counter = 0;
   //******* Handlers ******
   ctrl uponEvent {
     case _: Start => {
@@ -89,21 +87,7 @@ class OperationClientScenario extends ComponentDefinition {
       }
 
 
-      val put = new Put(s"lin", s"linValue");
-      var routeMsg = RouteMsg(put.key, put); // don't know which partition is responsible, so ask the bootstrap server to forward it
-      trigger(NetMessage(self, server, routeMsg) -> net);
-      //trigger(NetMessage(self, server, put)->net);
-      logger.info("Sending {}", put);
-      SimulationResult += (put.key -> "Sent");
-      linPending += (put.id -> put.key);
 
-      val get = new Get(s"lin");
-      val routeMsg_2 = RouteMsg(get.key, get); // don't know which partition is responsible, so ask the bootstrap server to forward it
-      trigger(NetMessage(self, server, routeMsg_2) -> net);
-      //trigger(NetMessage(self, server, get)->net);
-      logger.info("Sending {}", get);
-      SimulationResult += (get.key -> "Sent");
-      linPending += (get.id -> get.key);
 
     }
 
@@ -115,42 +99,44 @@ class OperationClientScenario extends ComponentDefinition {
     case NetMessage(header, or @ PutResponse(id, status, value)) => {
       logger.debug(s"put operation response: $or");
 
-      if(linPending.contains(id)){
-        SimulationResult += ( linPending.get(id).toString -> value);
-        counter = counter + 1;
-        SimulationResult += ("counter_put" -> counter.toString)
-      }else{
+//      if(linPending.contains(id)){
+//        SimulationResult += ( linPending.get(id).get -> value);
+////        counter = counter + 1;
+////        SimulationResult += ("counter_put" -> counter.toString)
+//      }
         pending.remove(id) match {
           case Some(key) => SimulationResult += (key -> value);
           case None      => logger.warn("ID $id was not pending! Ignoring response.");
-        }
+
       }
-
-
-
     }
 
     case NetMessage(header, or @ GetResponse(id, status, value)) => {
       logger.debug(s"get operation response: $or");
-      if(linPending.contains(id)){
-        SimulationResult += ( linPending.get(id).toString -> value);
-        counter = counter + 1;
-        SimulationResult += ("counter_get" -> counter.toString)
-      }else{
+//      if(linPending.contains(id)){
+//        SimulationResult += ( linPending.get(id).get -> value);
+////        counter = counter + 1;
+////        SimulationResult += ("counter_get" -> counter.toString)
+//      }
         pending.remove(id) match {
           case Some(key) => SimulationResult += (key -> value);
           case None      => logger.warn("ID $id was not pending! Ignoring response.");
-        }
+
       }
 
     }
 
     case NetMessage(header, or @ CasResponse(id, status, oldValue, newValue)) => {
       logger.debug(s"cas operation response: $or");
-      pending.remove(id) match {
-        case Some(key) => SimulationResult += (key -> newValue);//new value here in the result
-        case None      => logger.warn("ID $id was not pending! Ignoring response.");
+//      if(linPending.contains(id)){
+//        SimulationResult += ( linPending.get(id).get -> status.toString);
+//      }
+        pending.remove(id) match {
+          case Some(key) => SimulationResult += (key -> newValue);//new value here in the result
+          case None      => logger.warn("ID $id was not pending! Ignoring response.");
+
       }
+
     }
 
   }

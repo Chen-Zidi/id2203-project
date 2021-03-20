@@ -84,7 +84,7 @@ class OperationTest extends FlatSpec with Matchers {
   //    }
   //  }
 
-  "simple operation" should "be implemented and linearizable" in {
+  "simple operation" should "be implemented" in {
     val seed = 123l;
     JSimulationScenario.setSeed(seed);
     val simpleBootScenario = SimpleScenario.scenario(serverNum);
@@ -107,23 +107,7 @@ class OperationTest extends FlatSpec with Matchers {
       //CAS
       SimulationResult.get[String](s"TestCase$i") should be(Some(s"NewTestValue$i"));
     }
-    SimulationResult.get[String](s"counter_put") should be(Some(s"1"));
-    SimulationResult.get[String](s"counter_get") should be(Some(s"2"));
   }
-
-
-//  "system" should "linearlizable" in {
-//    val seed = 123l;
-//    JSimulationScenario.setSeed(seed);
-//    val simpleBootScenario = SimpleScenario.scenario(serverNum);
-//    val res = SimulationResultSingleton.getInstance();
-//    SimulationResult += ("messages" -> nMessages);
-//    simpleBootScenario.simulate(classOf[LauncherComp]);
-//
-//
-//
-//  }
-
 }
 
 
