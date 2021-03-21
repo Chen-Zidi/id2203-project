@@ -86,7 +86,7 @@ class VSOverlayManager extends ComponentDefinition {
 
       nodeList = lut.get.getNodes();
 
-      println("[Overlay manager] set fd and sc with " + nodeList.size + " servers");
+      println("[Overlay manager] set sc with " + nodeList.size + " servers");
 
 
       //inform the sequence paxos component and ballot election component
@@ -98,44 +98,19 @@ class VSOverlayManager extends ComponentDefinition {
     }
   }
 
-//  fd uponEvent{
-//    case Suspect(src: NetAddress) => {
-//
-//      suspectNodeList = suspectNodeList + src;
-//      nodeList = nodeList - src;
-//      println("[Overlay manager] remove " + src + "from list");
-//      val lut = LookupTable.generate(nodeList);
-//      trigger(InitialAssignments(lut) -> boot);
-//
-//      //trigger(SC_InitializeTopology(nodeList) ->sc);
-//    }
-//
-//    case Restore(src: NetAddress) =>{
-//      if(suspectNodeList.contains(src)){
-//        suspectNodeList = suspectNodeList - src;
-//        nodeList = nodeList + src;
-//        println("[Overlay manager] restore " + src + "from list");
-//        val lut = LookupTable.generate(nodeList);
-//        trigger(InitialAssignments(lut) -> boot);
-//        //trigger(SC_InitializeTopology(nodeList) ->sc);
-//      }
-//
-//    }
-//  }
 
   net uponEvent {
-    //not need for routing
-    // keep for OpsTest
-        case NetMessage(header, RouteMsg(key, msg)) => {
-          val nodes = lut.get.lookup(key);
-          assert(!nodes.isEmpty);
-          val i = Random.nextInt(nodes.size);
-          val target = nodes.drop(i).head;
-          log.info(s"Forwarding message for key $key to $target");
-          trigger(NetMessage(header.src, target, msg) -> net);
-        }
+    //for testing
+    case NetMessage(header, RouteMsg(key, msg)) => {
+      val nodes = lut.get.lookup(key);
+      assert(!nodes.isEmpty);
+      val i = Random.nextInt(nodes.size);
+      val target = nodes.drop(i).head;
+      log.info(s"Forwarding message for key $key to $target");
+      trigger(NetMessage(header.src, target, msg) -> net);
+    }
 
-
+    //connection with client
     case NetMessage(header, msg: Connect) => {
       lut match {
         case Some(l) => {
@@ -148,16 +123,15 @@ class VSOverlayManager extends ComponentDefinition {
     }
   }
 
-  //should not need routing now
-  //just keep for OpsTest
-    route uponEvent {
-      case RouteMsg(key, msg) => {
-        val nodes = lut.get.lookup(key);
-        assert(!nodes.isEmpty);
-        val i = Random.nextInt(nodes.size);
-        val target = nodes.drop(i).head;
-        log.info(s"Routing message for key $key to $target");
-        trigger(NetMessage(self, target, msg) -> net);
-      }
+  //for testing
+  route uponEvent {
+    case RouteMsg(key, msg) => {
+      val nodes = lut.get.lookup(key);
+      assert(!nodes.isEmpty);
+      val i = Random.nextInt(nodes.size);
+      val target = nodes.drop(i).head;
+      log.info(s"Routing message for key $key to $target");
+      trigger(NetMessage(self, target, msg) -> net);
     }
+  }
 }
