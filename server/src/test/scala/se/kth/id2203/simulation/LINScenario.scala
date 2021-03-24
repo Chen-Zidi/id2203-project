@@ -65,6 +65,7 @@ object LINScenario {
 
   def scenario(servers: Int): JSimulationScenario = {
 
+    //need no random latency network
     //val networkSetup = raise(1, setUniformLatencyNetwork()).arrival(constant(0));
     val startCluster = raise(servers, startServerOp, 1.toN).arrival(constant(1.second));
     val startClients = raise(1, startClientOp, 1.toN).arrival(constant(1.second));

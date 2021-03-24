@@ -26,12 +26,12 @@ client/assembly //generate client jar files
 
 run the server
 ```
-java -jar server/target/scala-2.13/server.jar -p 45678 \\main server
-java -jar server/target/scala-2.13/server.jar -p 45679 -s localhost:45678 \\server connecting to 45678
-java -jar server/target/scala-2.13/server.jar -p 45680 -s localhost:45678 \\server connecting to 45678
-java -jar server/target/scala-2.13/server.jar -p 45681 -s localhost:45678 \\server connecting to 45678
+java -jar server/target/scala-2.13/server.jar -p 45678 //main server
+java -jar server/target/scala-2.13/server.jar -p 45679 -s localhost:45678 //server connecting to 45678
+java -jar server/target/scala-2.13/server.jar -p 45680 -s localhost:45678 //server connecting to 45678
+java -jar server/target/scala-2.13/server.jar -p 45681 -s localhost:45678 //server connecting to 45678
 
-java -jar client/target/scala-2.13/client.jar -p 56787 -s localhost:45678 \\run client connecting to server 45678
+java -jar client/target/scala-2.13/client.jar -p 56787 -s localhost:45678 //run client connecting to server 45678
 ```
 
 ## To do list
@@ -42,4 +42,4 @@ java -jar client/target/scala-2.13/client.jar -p 56787 -s localhost:45678 \\run 
 - [x] adjustment before testing
 - [x] simple operation test
 - [x] server crash test 
-- [] LIN operation test
+- [x] LIN operation test

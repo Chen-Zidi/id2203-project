@@ -79,6 +79,7 @@ object SimpleScenario {
 
   def scenario(servers: Int): JSimulationScenario = {
 
+    //do not need a random latency network here
     //val networkSetup = raise(1, setUniformLatencyNetwork()).arrival(constant(0));
     val startCluster = raise(servers, startServerOp, 1.toN).arrival(constant(1.second));
     val startClients = raise(1, startClientOp, 1.toN).arrival(constant(1.second));

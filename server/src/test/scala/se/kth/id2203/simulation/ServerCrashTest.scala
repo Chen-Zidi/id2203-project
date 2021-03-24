@@ -9,7 +9,7 @@ import se.sics.kompics.simulator.{SimulationScenario => JSimulationScenario}
 class ServerCrashTest extends FlatSpec with Matchers {
   private val nMessages = 3;
   private val serverNum = 4;
-  "single server crash" should "not effect on the system" in {
+  "single server crash" should "has no effect on the system" in {
     val seed = 123l;
     JSimulationScenario.setSeed(seed);
     val simpleBootScenario = ServerCrashScenario.scenario(serverNum);
@@ -20,6 +20,7 @@ class ServerCrashTest extends FlatSpec with Matchers {
 
     simpleBootScenario.simulate(classOf[LauncherComp]);
 
+    //verify simple operations should still work
     for (i <- 0 to nMessages) {
       //PUT
       SimulationResult.get[String](s"test$i") should be(Some(s"value$i"));

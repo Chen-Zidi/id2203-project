@@ -34,7 +34,7 @@ class LINTest extends FlatSpec with Matchers {
   private val nMessages = 3;
   private val serverNum = 4;
 
-  "system" should "linearlizable" in {
+  "system" should "be linearlizable" in {
     val seed = 123l;
     JSimulationScenario.setSeed(seed);
     val simpleBootScenario = LINScenario.scenario(serverNum);
